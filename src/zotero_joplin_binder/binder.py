@@ -23,12 +23,18 @@ while True:
         d = requests.get(
             f"https://api.zotero.org/groups/2611287/collections?key={zotero_key}"
         )
+        with open("../../data/shared_collections.txt", "w") as output:
+            json.dump(d.json(), output)
+        i = 0
         for col in d.json():
+
             l = requests.get(
                 f"""https://api.zotero.org/groups/2611287/collections/{col['key']}/items?key={zotero_key}"""
             )
+            with open(f"../../data/shared_items_collection_{i}.txt", "w") as output0:
+                json.dump(l.json(), output0)
+            i += 1
             for item in l.json():
-
                 couple = (col["key"], item["key"])
                 if couple in current_items:
                     continue
@@ -44,17 +50,27 @@ while True:
 
                         msg = EmailMessage()
                         content = f"""
-                        "Authors : {[
-                                " ".join([it["firstName"], it["lastName"]])
-                                for it in item["data"]["creators"]
-                            ]}
-                        Title : {item["data"]["title"]}
-                        Url : {item["data"]["url"]}
+                        A new item as been added to our Zotero shared library {item['library']['name']} by
+                        {item['meta']['createdByUser']['username']}.
+
+                        The new article is :
+
+                        - Title : {item['data']['title']}
+                        
+                        - Authors : {[
+                        " ".join([it["firstName"], it["lastName"]])
+                        for it in item["data"]["creators"]
+                        ]}
+                        - Date : {item['data']['date']}
+                        
+                        - URL : {item['data']['url']}
+                        
+                        - Abstract : {item['data']['abstractNote']}
                         """
 
                         msg[
                             "Subject"
-                        ] = f"""A new document {item["data"]["title"]} has been added to our shared library"""
+                        ] = f"""New document {item["data"]["title"]} in {item['library']['name']} by {item['meta']['createdByUser']['username']}"""
                         msg["From"] = os.getenv("EMAIL")
                         msg["To"] = ", ".join(receivers)
                         msg.set_content(content)
@@ -64,3 +80,4 @@ while True:
                             server.send_message(msg)
                     except KeyError:
                         continue
+                        #
